@@ -1,4 +1,4 @@
-# go-validator
+# go-restify
 
 This package helps you automate API testing
 
@@ -8,8 +8,10 @@ Only works for JSON API
 
 ## Dependencies
 
-> "github.com/bastianrob/go-valuator"
-> "github.com/buger/jsonparser"
+```bash
+"github.com/bastianrob/go-valuator"
+"github.com/buger/jsonparser"
+```
 
 ## Example
 
