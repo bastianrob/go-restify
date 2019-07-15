@@ -19,15 +19,15 @@ Only works for JSON API
 
 ```go
 buffer := bytes.Buffer{}
-scenario.New().
+scenario.New().Set().
     Name("Scenario One").
     Environment("Local").
     Description("").
-    AddCase(testcase.TestCase{
+    AddCase(restify.TestCase{
         Order:       1,
         Name:        "Setup Auth",
         Description: "Auth to firebase",
-        Request: testcase.Request{
+        Request: restify.Request{
             URL:    "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={YOUR_FIREBASE_KEY}",
             Method: "POST",
             Payload: json.RawMessage(`{
@@ -36,26 +36,26 @@ scenario.New().
                 "returnSecureToken": true
             }`),
         },
-        Expect: testcase.Expect{
+        Expect: restify.Expect{
             StatusCode: 200,
-            Evaluate: []testcase.Expression{{
+            Evaluate: []restify.Expression{{
                 Prop:        "idToken",
                 Operator:    "!=",
                 Value:       "",
                 Description: "ID Token must be returned from firebase",
             }},
         },
-        Pipeline: testcase.Pipeline{
+        Pipeline: restify.Pipeline{
             Cache:     true,
             CacheAs:   "auth",
             OnFailure: onfailure.Exit,
         },
     }).
-    AddCase(testcase.TestCase{
+    AddCase(restify.TestCase{
         Order:       2,
         Name:        "Get List",
         Description: "Get a list of resource that returns {data: [{resource1, resource2}]}",
-        Request: testcase.Request{
+        Request: restify.Request{
             URL:    "http://localhost:3000/resources",
             Method: "GET",
             Headers: map[string]string{
@@ -63,27 +63,27 @@ scenario.New().
             },
             Payload: nil,
         },
-        Expect: testcase.Expect{
+        Expect: restify.Expect{
             StatusCode:       200,
             EvaluationObject: "data.[0]",
-            Evaluate: []testcase.Expression{{
+            Evaluate: []restify.Expression{{
                 Prop:        "id",
                 Operator:    "!=",
                 Value:       "",
                 Description: "Returned data is not empty",
             }},
         },
-        Pipeline: testcase.Pipeline{
+        Pipeline: restify.Pipeline{
             Cache:     true,
             CacheAs:   "R1",
             OnFailure: onfailure.Exit,
         },
     }).
-    AddCase(testcase.TestCase{
+    AddCase(restify.TestCase{
         Order:       3,
         Name:        "Get One",
         Description: "Get one resource from previous case",
-        Request: testcase.Request{
+        Request: restify.Request{
             URL:    "http://localhost:3000/resources/{R1.data.[0].id}",
             Method: "GET",
             Headers: map[string]string{
@@ -91,21 +91,21 @@ scenario.New().
             },
             Payload: nil,
         },
-        Expect: testcase.Expect{
+        Expect: restify.Expect{
             StatusCode:       200,
             EvaluationObject: "data",
-            Evaluate: []testcase.Expression{{
+            Evaluate: []restify.Expression{{
                 Prop:        "id",
                 Operator:    "!=",
                 Value:       "",
                 Description: "Returned data is not empty",
             }},
         },
-        Pipeline: testcase.Pipeline{
+        Pipeline: restify.Pipeline{
             Cache:     true,
             CacheAs:   "R2",
             OnFailure: onfailure.Exit,
         },
-    }).
+    }).End().
     Run(&buffer)
 ```

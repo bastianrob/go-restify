@@ -1,4 +1,4 @@
-package testcase
+package restify
 
 import (
 	"encoding/json"

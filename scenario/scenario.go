@@ -12,61 +12,106 @@ import (
 
 	"github.com/buger/jsonparser"
 
+	restify "github.com/bastianrob/go-restify"
 	"github.com/bastianrob/go-restify/enum/onfailure"
-	"github.com/bastianrob/go-restify/testcase"
 	valuator "github.com/bastianrob/go-valuator"
 )
 
-//Scenario is the biggest scope of a test
-//Can have multiple test cases
-type Scenario interface {
-	Name(name string) Scenario
-	Description(desc string) Scenario
-	Environment(env string) Scenario
-	AddCase(tcase testcase.TestCase) Scenario
-	Run(w io.Writer)
-}
-
+//implementation of restify.Scenario
 type scenario struct {
 	cache map[string]json.RawMessage
 
+	id          string
 	name        string
 	description string
 	environment string
 
-	cases []testcase.TestCase
+	cases []restify.TestCase
+
+	getter restify.ScenarioGetter
+	setter restify.ScenarioSetter
+}
+
+type getter struct {
+	scenario *scenario
+}
+
+type setter struct {
+	scenario *scenario
 }
 
 //New Scenario create a new test scenario
-func New() Scenario {
-	return &scenario{
+func New() restify.Scenario {
+	s := &scenario{
 		cache: make(map[string]json.RawMessage),
-		cases: []testcase.TestCase{},
+		cases: []restify.TestCase{},
 	}
-}
 
-func (s *scenario) Name(name string) Scenario {
-	s.name = name
+	s.getter = &getter{s}
+	s.setter = &setter{s}
 	return s
 }
 
-func (s *scenario) Description(desc string) Scenario {
-	s.description = desc
+func (g *getter) ID() string {
+	return g.scenario.id
+}
+
+func (s *setter) ID(id string) restify.ScenarioSetter {
+	s.scenario.id = id
 	return s
 }
 
-func (s *scenario) Environment(env string) Scenario {
-	s.environment = env
+func (g *getter) Name() string {
+	return g.scenario.name
+}
+
+func (s *setter) Name(name string) restify.ScenarioSetter {
+	s.scenario.name = name
 	return s
 }
 
-func (s *scenario) AddCase(tcase testcase.TestCase) Scenario {
-	s.cases = append(s.cases, tcase)
-	sort.Slice(s.cases, func(i, j int) bool {
-		return s.cases[i].Order < s.cases[j].Order
+func (g *getter) Description() string {
+	return g.scenario.description
+}
+
+func (s *setter) Description(desc string) restify.ScenarioSetter {
+	s.scenario.description = desc
+	return s
+}
+
+func (g *getter) Environment() string {
+	return g.scenario.environment
+}
+
+func (s *setter) Environment(env string) restify.ScenarioSetter {
+	s.scenario.environment = env
+	return s
+}
+
+func (g *getter) Cases() []restify.TestCase {
+	return g.scenario.cases
+}
+
+func (s *setter) AddCase(tcase restify.TestCase) restify.ScenarioSetter {
+	s.scenario.cases = append(s.scenario.cases, tcase)
+	sort.Slice(s.scenario.cases, func(i, j int) bool {
+		return s.scenario.cases[i].Order < s.scenario.cases[j].Order
 	})
 
 	return s
+}
+
+func (s *setter) End() restify.Scenario {
+
+	return s.scenario
+}
+
+func (s *scenario) Get() restify.ScenarioGetter {
+	return s.getter
+}
+
+func (s *scenario) Set() restify.ScenarioSetter {
+	return s.setter
 }
 
 func (s *scenario) Run(w io.Writer) {
@@ -181,4 +226,50 @@ func (s *scenario) Run(w io.Writer) {
 
 		io.WriteString(w, fmt.Sprintf("%d. Success\n", (i+1)))
 	}
+}
+
+func (s *scenario) String() string {
+	b, err := s.MarshalJSON()
+	if err != nil {
+		return fmt.Sprintf(`{ERROR: %s}`, err.Error())
+	}
+
+	return string(b)
+}
+
+func (s *scenario) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		ID          string             `json:"id"`
+		Name        string             `json:"name"`
+		Description string             `json:"description"`
+		Environment string             `json:"environment"`
+		Cases       []restify.TestCase `json:"cases"`
+	}{
+		Name:        s.name,
+		Description: s.description,
+		Environment: s.environment,
+		Cases:       s.cases,
+	})
+}
+
+func (s *scenario) UnmarshalJSON(data []byte) error {
+	alias := struct {
+		ID          string             `json:"id"`
+		Name        string             `json:"name"`
+		Description string             `json:"description"`
+		Environment string             `json:"environment"`
+		Cases       []restify.TestCase `json:"cases"`
+	}{}
+
+	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+
+	s.id = alias.ID
+	s.name = alias.Name
+	s.description = alias.Description
+	s.environment = alias.Environment
+	s.cases = alias.Cases
+	return nil
 }
