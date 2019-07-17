@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/buger/jsonparser"
+	"go.mongodb.org/mongo-driver/bson"
 
 	restify "github.com/bastianrob/go-restify"
 	"github.com/bastianrob/go-restify/enum/onfailure"
@@ -245,6 +246,7 @@ func (s *scenario) MarshalJSON() ([]byte, error) {
 		Environment string             `json:"environment"`
 		Cases       []restify.TestCase `json:"cases"`
 	}{
+		ID:          s.id,
 		Name:        s.name,
 		Description: s.description,
 		Environment: s.environment,
@@ -262,6 +264,44 @@ func (s *scenario) UnmarshalJSON(data []byte) error {
 	}{}
 
 	err := json.Unmarshal(data, &alias)
+	if err != nil {
+		return err
+	}
+
+	s.id = alias.ID
+	s.name = alias.Name
+	s.description = alias.Description
+	s.environment = alias.Environment
+	s.cases = alias.Cases
+	return nil
+}
+
+func (s *scenario) MarshalBSON() ([]byte, error) {
+	return bson.Marshal(struct {
+		ID          string             `bson:"_id"`
+		Name        string             `bson:"name"`
+		Description string             `bson:"description"`
+		Environment string             `bson:"environment"`
+		Cases       []restify.TestCase `bson:"cases"`
+	}{
+		ID:          s.id,
+		Name:        s.name,
+		Description: s.description,
+		Environment: s.environment,
+		Cases:       s.cases,
+	})
+}
+
+func (s *scenario) UnmarshalBSON(data []byte) error {
+	alias := struct {
+		ID          string             `bson:"_id"`
+		Name        string             `bson:"name"`
+		Description string             `bson:"description"`
+		Environment string             `bson:"environment"`
+		Cases       []restify.TestCase `bson:"cases"`
+	}{}
+
+	err := bson.Unmarshal(data, &alias)
 	if err != nil {
 		return err
 	}
