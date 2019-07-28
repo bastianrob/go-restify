@@ -2,6 +2,7 @@ package restify
 
 import (
 	"encoding/json"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -10,22 +11,24 @@ import (
 	"github.com/bastianrob/go-restify/enum"
 )
 
+var (
+	replacable = regexp.MustCompile("\\{(.*?)\\}")
+)
+
 //Request test object
 type Request struct {
-	URL     string            `json:"url" bson:"url"`
-	Method  string            `json:"method" bson:"method"`
-	Headers map[string]string `json:"headers" bson:"headers"`
-	Payload json.RawMessage   `json:"payload" bson:"payload"`
+	URL     string                 `json:"url" bson:"url"`
+	Method  string                 `json:"method" bson:"method"`
+	Headers map[string]string      `json:"headers" bson:"headers"`
+	Payload map[string]interface{} `json:"payload" bson:"payload"`
 }
 
 //Parse cache into request parameter
 //This will replace {....} with existing value in cache
 func (r *Request) Parse(cache map[string]json.RawMessage) {
-	regex := regexp.MustCompile("\\{(.*?)\\}")
-
 	//URL regex
 	{
-		matches := regex.FindAllStringSubmatch(r.URL, -1)
+		matches := replacable.FindAllStringSubmatch(r.URL, -1)
 		for _, match := range matches {
 			param := match[0]
 			keys := strings.Split(match[1], ".")
@@ -41,7 +44,7 @@ func (r *Request) Parse(cache map[string]json.RawMessage) {
 
 	//Headers regex
 	for key, head := range r.Headers {
-		matches := regex.FindAllStringSubmatch(head, -1)
+		matches := replacable.FindAllStringSubmatch(head, -1)
 		for _, match := range matches {
 			param := match[0]
 			keys := strings.Split(match[1], ".")
@@ -56,6 +59,40 @@ func (r *Request) Parse(cache map[string]json.RawMessage) {
 		}
 	}
 
+	//Payload Regex
+	r.Payload = recursiveMapParser(r.Payload, cache)
+}
+
+func recursiveMapParser(obj map[string]interface{}, cache map[string]json.RawMessage) map[string]interface{} {
+	for key, val := range obj {
+		if val == nil {
+			continue
+		}
+
+		valKind := reflect.TypeOf(val).Kind()
+		if valKind == reflect.Map {
+			obj[key] = recursiveMapParser(val.(map[string]interface{}), cache)
+			continue
+		} else if valKind == reflect.String {
+			str := val.(string)
+			matches := replacable.FindAllStringSubmatch(str, -1)
+			for _, match := range matches {
+				param := match[0]
+				keys := strings.Split(match[1], ".")
+				cacheKey := keys[0]
+				cacheProps := keys[1:]
+
+				cacheObj := cache[cacheKey]
+				strval, _ := jsonparser.GetString(cacheObj, cacheProps...)
+
+				replaced := strings.Replace(str, param, strval, 1)
+				obj[key] = replaced
+			}
+			continue
+		}
+
+	}
+	return obj
 }
 
 //Expression rule of expected response
@@ -72,6 +109,26 @@ type Expect struct {
 	Headers          map[string]string `json:"headers" bson:"headers"`
 	EvaluationObject string            `json:"evaluation_object" bson:"evaluation_object"`
 	Evaluate         []Expression      `json:"evaluate" bson:"evaluate"`
+}
+
+//Parse cache into evaluation value
+//This will replace {....} with existing value in cache
+func (e *Expect) Parse(cache map[string]json.RawMessage) {
+	for i, exp := range e.Evaluate {
+		matches := replacable.FindAllStringSubmatch(exp.Value, -1)
+		for _, match := range matches {
+			param := match[0]
+			keys := strings.Split(match[1], ".")
+			cacheKey := keys[0]
+			cacheProps := keys[1:]
+
+			obj := cache[cacheKey]
+			strval, _ := jsonparser.GetString(obj, cacheProps...)
+
+			exp.Value = strings.Replace(exp.Value, param, strval, 1)
+			e.Evaluate[i] = exp
+		}
+	}
 }
 
 //Pipeline test pipeline as what to do with the response object

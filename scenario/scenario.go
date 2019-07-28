@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"sort"
 	"strings"
 
 	"github.com/buger/jsonparser"
@@ -53,68 +52,6 @@ func New() restify.Scenario {
 	return s
 }
 
-func (g *getter) ID() string {
-	return g.scenario.id
-}
-
-func (s *setter) ID(id string) restify.ScenarioSetter {
-	s.scenario.id = id
-	return s
-}
-
-func (g *getter) Name() string {
-	return g.scenario.name
-}
-
-func (s *setter) Name(name string) restify.ScenarioSetter {
-	s.scenario.name = name
-	return s
-}
-
-func (g *getter) Description() string {
-	return g.scenario.description
-}
-
-func (s *setter) Description(desc string) restify.ScenarioSetter {
-	s.scenario.description = desc
-	return s
-}
-
-func (g *getter) Environment() string {
-	return g.scenario.environment
-}
-
-func (s *setter) Environment(env string) restify.ScenarioSetter {
-	s.scenario.environment = env
-	return s
-}
-
-func (g *getter) Cases() []restify.TestCase {
-	return g.scenario.cases
-}
-
-func (s *setter) AddCase(tcase restify.TestCase) restify.ScenarioSetter {
-	s.scenario.cases = append(s.scenario.cases, tcase)
-	sort.Slice(s.scenario.cases, func(i, j int) bool {
-		return s.scenario.cases[i].Order < s.scenario.cases[j].Order
-	})
-
-	return s
-}
-
-func (s *setter) End() restify.Scenario {
-
-	return s.scenario
-}
-
-func (s *scenario) Get() restify.ScenarioGetter {
-	return s.getter
-}
-
-func (s *scenario) Set() restify.ScenarioSetter {
-	return s.setter
-}
-
 func (s *scenario) Run(w io.Writer) {
 	io.WriteString(w, fmt.Sprintf(
 		"Start running test scenario: name=%s env=%s desc=%s cases=%d\n",
@@ -128,9 +65,11 @@ func (s *scenario) Run(w io.Writer) {
 
 		//Parse any cache needed
 		tc.Request.Parse(s.cache)
+		tc.Expect.Parse(s.cache)
+		payload, _ := json.Marshal(tc.Request.Payload)
 
 		//Setup HTTP request
-		req, err := http.NewRequest(tc.Request.Method, tc.Request.URL, bytes.NewBuffer(tc.Request.Payload))
+		req, err := http.NewRequest(tc.Request.Method, tc.Request.URL, bytes.NewBuffer(payload))
 		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
 			io.WriteString(w, fmt.Sprintf("%d. Failed to create request: %s\n", (i+1), err.Error()))
 			return
@@ -176,6 +115,8 @@ func (s *scenario) Run(w io.Writer) {
 		} else if err != nil {
 			io.WriteString(w, fmt.Sprintf("%d. Failed to get response body: %s\n", (i+1), err.Error()))
 			continue
+		} else {
+			io.WriteString(w, fmt.Sprintf("%d. Got response body: %s\n", (i+1), string(body)))
 		}
 
 		//parse response body into map
