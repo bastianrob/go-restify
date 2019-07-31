@@ -6,6 +6,10 @@ import (
 	restify "github.com/bastianrob/go-restify"
 )
 
+type setter struct {
+	scenario *scenario
+}
+
 func (s *scenario) Set() restify.ScenarioSetter {
 	return s.setter
 }

@@ -4,6 +4,7 @@ import (
 	"io"
 )
 
+//ScenarioSetter access to set scenario properties
 type ScenarioSetter interface {
 	ID(id string) ScenarioSetter
 	Name(name string) ScenarioSetter
@@ -13,6 +14,7 @@ type ScenarioSetter interface {
 	End() Scenario
 }
 
+//ScenarioGetter access to get scenario properties
 type ScenarioGetter interface {
 	ID() string
 	Name() string
@@ -26,5 +28,5 @@ type ScenarioGetter interface {
 type Scenario interface {
 	Get() ScenarioGetter
 	Set() ScenarioSetter
-	Run(w io.Writer)
+	Run(w io.Writer) ([]TestResult, error)
 }

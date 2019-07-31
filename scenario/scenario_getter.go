@@ -2,6 +2,10 @@ package scenario
 
 import restify "github.com/bastianrob/go-restify"
 
+type getter struct {
+	scenario *scenario
+}
+
 func (s *scenario) Get() restify.ScenarioGetter {
 	return s.getter
 }
