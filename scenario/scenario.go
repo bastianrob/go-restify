@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -133,16 +132,16 @@ func (s *scenario) UnmarshalBSON(data []byte) error {
 	return nil
 }
 
-func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
+func (s *scenario) Run(w io.Writer) []restify.TestResult {
 	io.WriteString(w, fmt.Sprintf(
-		"Start running test scenario: name=%s env=%s desc=%s cases=%d\n",
+		"Start running test scenario: name=%s env=%s desc=%s cases=%d\r\n",
 		s.name, s.environment, s.description, len(s.cases)))
 
 	testResults := []restify.TestResult{}
 	httpClient := http.Client{}
 	for i, tc := range s.cases {
 		io.WriteString(w, fmt.Sprintf(
-			"%d. Test case: name=%s desc=%s onfail=%s\n",
+			"%d. Test case: name=%s desc=%s onfail=%s\r\n",
 			(i+1), tc.Name, tc.Description, tc.Pipeline.OnFailure))
 
 		tr := restify.NewTestResult(s, i)
@@ -155,15 +154,15 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 		//Setup HTTP request
 		req, err := http.NewRequest(tc.Request.Method, tc.Request.URL, bytes.NewBuffer(payload))
 		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-			msg := fmt.Sprintf("%d. Failed to create request: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to create request: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
 			testResults = append(testResults, tr)
 
-			return testResults, errors.New(msg)
+			return testResults
 		} else if err != nil {
-			msg := fmt.Sprintf("%d. Failed to create request: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to create request: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
@@ -182,38 +181,39 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 		trace := &httptrace.ClientTrace{
 			DNSStart: func(dsi httptrace.DNSStartInfo) { dns = time.Now() },
 			DNSDone: func(ddi httptrace.DNSDoneInfo) {
-				tr.TimingDNS = float64(time.Since(dns)) / float64(time.Millisecond)
+				tr.TimingDNS = time.Since(dns)
 			},
 
 			TLSHandshakeStart: func() { tlsHandshake = time.Now() },
 			TLSHandshakeDone: func(cs tls.ConnectionState, err error) {
-				tr.TimingHandshake = float64(time.Since(tlsHandshake)) / float64(time.Millisecond)
+				tr.TimingHandshake = time.Since(tlsHandshake)
 			},
 
 			ConnectStart: func(network, addr string) { connect = time.Now() },
 			ConnectDone: func(network, addr string, err error) {
-				tr.TimingConnected = float64(time.Since(connect)) / float64(time.Millisecond)
+				tr.TimingConnected = time.Since(connect)
 			},
 
 			GotFirstResponseByte: func() {
-				tr.TimingFirstByte = float64(time.Since(start)) / float64(time.Millisecond)
+				tr.TimingFirstByte = time.Since(start)
 			},
 		}
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 
-		req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 		//Initiate HTTP request
+		start = time.Now()
 		res, err := httpClient.Do(req)
-		tr.TimingTotal = float64(time.Since(start)) / float64(time.Millisecond)
+		tr.TimingTotal = time.Since(start)
 		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-			msg := fmt.Sprintf("%d. Failed to execute request: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to execute request: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
 			testResults = append(testResults, tr)
 
-			return testResults, errors.New(msg)
+			return testResults
 		} else if err != nil {
-			msg := fmt.Sprintf("%d. Failed to execute request: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to execute request: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
@@ -227,17 +227,17 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 		//Assert status code
 		if res.StatusCode != tc.Expect.StatusCode && tc.Pipeline.OnFailure == onfailure.Exit {
 			msg := fmt.Sprintf(
-				"%d. Expectation failed. Expect status: %d, got: %d\n",
+				"%d. Expectation failed. Expect status: %d, got: %d\r\n",
 				(i + 1), tc.Expect.StatusCode, res.StatusCode)
 			io.WriteString(w, msg)
 
 			tr.Message = msg
 			testResults = append(testResults, tr)
 
-			return testResults, errors.New(msg)
+			return testResults
 		} else if res.StatusCode != tc.Expect.StatusCode {
 			msg := fmt.Sprintf(
-				"%d. Expectation failed. Expect status: %d, got: %d\n",
+				"%d. Expectation failed. Expect status: %d, got: %d\r\n",
 				(i + 1), tc.Expect.StatusCode, res.StatusCode)
 			io.WriteString(w, msg)
 
@@ -251,15 +251,15 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 		body, err := ioutil.ReadAll(res.Body)
 		res.Body.Close()
 		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-			msg := fmt.Sprintf("%d. Failed to get response body: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to get response body: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
 			testResults = append(testResults, tr)
 
-			return testResults, errors.New(msg)
+			return testResults
 		} else if err != nil {
-			msg := fmt.Sprintf("%d. Failed to get response body: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to get response body: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
@@ -267,7 +267,7 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 
 			continue
 		} else {
-			io.WriteString(w, fmt.Sprintf("%d. Got response body: %s\n", (i+1), string(body)))
+			io.WriteString(w, fmt.Sprintf("%d. Got response body: %s\r\n", (i+1), string(body)))
 		}
 
 		//parse response body into map
@@ -281,14 +281,14 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 		}
 
 		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-			msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
 			testResults = append(testResults, tr)
-			return testResults, errors.New(msg)
+			return testResults
 		} else if err != nil {
-			msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\n", (i + 1), err.Error())
+			msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
 			io.WriteString(w, msg)
 
 			tr.Message = msg
@@ -302,14 +302,14 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 		for ri, rule := range tc.Expect.Evaluate {
 			eval, err := valuator.NewValuator(rule.Prop, rule.Operator, rule.Value, rule.Description)
 			if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-				msg := fmt.Sprintf("%d.%d. Failed to get evaluator: %s\n", (i + 1), (ri + 1), err.Error())
+				msg := fmt.Sprintf("%d.%d. Failed to get evaluator: %s\r\n", (i + 1), (ri + 1), err.Error())
 				io.WriteString(w, msg)
 
 				tr.Message = msg
 				testResults = append(testResults, tr)
-				return testResults, errors.New(msg)
+				return testResults
 			} else if err != nil {
-				msg := fmt.Sprintf("%d.%d. Failed to get evaluator: %s\n", (i + 1), (ri + 1), err.Error())
+				msg := fmt.Sprintf("%d.%d. Failed to get evaluator: %s\r\n", (i + 1), (ri + 1), err.Error())
 				io.WriteString(w, msg)
 
 				tr.Message = msg
@@ -319,7 +319,7 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 
 			valid = eval.Evaluate(obj)
 			if !valid {
-				invalidMsg = fmt.Sprintf("%d.%d. Expectation failed against rule=%+v\n", (i + 1), (ri + 1), rule)
+				invalidMsg = fmt.Sprintf("%d.%d. Expectation failed against rule=%+v\r\n", (i + 1), (ri + 1), rule)
 				io.WriteString(w, invalidMsg)
 				break
 			}
@@ -328,7 +328,7 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 		if !valid && tc.Pipeline.OnFailure == onfailure.Exit {
 			tr.Message = invalidMsg
 			testResults = append(testResults, tr)
-			return testResults, errors.New(invalidMsg)
+			return testResults
 		}
 
 		//cache if needed
@@ -336,11 +336,12 @@ func (s *scenario) Run(w io.Writer) ([]restify.TestResult, error) {
 			s.cache[tc.Pipeline.CacheAs] = body
 		}
 
-		msg := fmt.Sprintf("%d. Success\n", (i + 1))
+		msg := fmt.Sprintf("%d. Success\r\n", (i + 1))
 		io.WriteString(w, msg)
-		tr.Message = invalidMsg
+
+		tr.Message = msg
 		testResults = append(testResults, tr)
 	}
 
-	return testResults, nil
+	return testResults
 }

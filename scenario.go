@@ -28,5 +28,5 @@ type ScenarioGetter interface {
 type Scenario interface {
 	Get() ScenarioGetter
 	Set() ScenarioSetter
-	Run(w io.Writer) ([]TestResult, error)
+	Run(w io.Writer) []TestResult
 }

@@ -16,11 +16,11 @@ type TestResult struct {
 	ResponseCode int   `json:"response_code" bson:"response_code"`
 	ResponseSize int64 `json:"response_size" bson:"response_size"`
 	//Response timing
-	TimingDNS       float64 `json:"timing_dns" bson:"timing_dns"`
-	TimingHandshake float64 `json:"timing_handshake" bson:"timing_handshake"`
-	TimingConnected float64 `json:"timing_connected" bson:"timing_connected"`
-	TimingFirstByte float64 `json:"timing_first_byte" bson:"timing_first_byte"`
-	TimingTotal     float64 `json:"timing_total" bson:"timing_total"`
+	TimingDNS       time.Duration `json:"timing_dns" bson:"timing_dns"`
+	TimingHandshake time.Duration `json:"timing_handshake" bson:"timing_handshake"`
+	TimingConnected time.Duration `json:"timing_connected" bson:"timing_connected"`
+	TimingFirstByte time.Duration `json:"timing_first_byte" bson:"timing_first_byte"`
+	TimingTotal     time.Duration `json:"timing_total" bson:"timing_total"`
 	//ResponsePayload?
 	ExpectedCode int    `json:"expected_code" bson:"expected_code"`
 	Message      string `json:"message" bson:"message"`
