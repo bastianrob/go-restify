@@ -65,8 +65,8 @@ scenario.New().Set().
         },
         Expect: restify.Expect{
             StatusCode:       200,
-            EvaluationObject: "data.[0]",
             Evaluate: []restify.Expression{{
+                Object:      "data.[0]",
                 Prop:        "id",
                 Operator:    "!=",
                 Value:       "",
@@ -93,8 +93,8 @@ scenario.New().Set().
         },
         Expect: restify.Expect{
             StatusCode:       200,
-            EvaluationObject: "data",
             Evaluate: []restify.Expression{{
+                Object:      "data",
                 Prop:        "id",
                 Operator:    "!=",
                 Value:       "",
