@@ -132,9 +132,10 @@ func (s *scenario) UnmarshalBSON(data []byte) error {
 	return nil
 }
 
+//TODO: UGLY AF CODE! TOO EFFIN FAT! NEED TO REFACTOR!
 func (s *scenario) Run(w io.Writer) []restify.TestResult {
 	io.WriteString(w, fmt.Sprintf(
-		"Start running test scenario: name=%s env=%s desc=%s cases=%d\r\n",
+		"Start running test scenario: name=%s, env=%s, desc=%s, cases=%d\r\n",
 		s.name, s.environment, s.description, len(s.cases)))
 
 	testResults := []restify.TestResult{}
@@ -270,32 +271,6 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 			io.WriteString(w, fmt.Sprintf("%d. Got response body: %s\r\n", (i+1), string(body)))
 		}
 
-		//parse response body into map
-		obj := make(map[string]interface{})
-		if tc.Expect.EvaluationObject != "" {
-			paths := strings.Split(tc.Expect.EvaluationObject, ".")
-			val, _, _, _ := jsonparser.Get(body, paths...)
-			err = json.Unmarshal(val, &obj)
-		} else {
-			err = json.Unmarshal(body, &obj)
-		}
-
-		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-			msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
-			io.WriteString(w, msg)
-
-			tr.Message = msg
-			testResults = append(testResults, tr)
-			return testResults
-		} else if err != nil {
-			msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
-			io.WriteString(w, msg)
-
-			tr.Message = msg
-			testResults = append(testResults, tr)
-			continue
-		}
-
 		//evaluate every rule
 		valid := true
 		invalidMsg := ""
@@ -315,6 +290,33 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 				tr.Message = msg
 				testResults = append(testResults, tr)
 				continue
+			}
+
+			obj := make(map[string]interface{})
+			{ //parse response body into map and take the evaluation object
+				if rule.Object == "" {
+					err = json.Unmarshal(body, &obj)
+				} else {
+					paths := strings.Split(rule.Object, ".")
+					val, _, _, _ := jsonparser.Get(body, paths...)
+					err = json.Unmarshal(val, &obj)
+				}
+
+				if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
+					msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
+					io.WriteString(w, msg)
+
+					tr.Message = msg
+					testResults = append(testResults, tr)
+					return testResults
+				} else if err != nil {
+					msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
+					io.WriteString(w, msg)
+
+					tr.Message = msg
+					testResults = append(testResults, tr)
+					continue
+				}
 			}
 
 			valid = eval.Evaluate(obj)
