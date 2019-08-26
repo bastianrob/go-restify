@@ -225,6 +225,29 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 		tr.ResponseCode = res.StatusCode
 		tr.ResponseSize = res.ContentLength
 
+		//Assert response body first so we print the response JSON before anything else
+		body, err := ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
+			msg := fmt.Sprintf("%d. Failed to get response body: %s\r\n", (i + 1), err.Error())
+			io.WriteString(w, msg)
+
+			tr.Message = msg
+			testResults = append(testResults, tr)
+
+			return testResults
+		} else if err != nil {
+			msg := fmt.Sprintf("%d. Failed to get response body: %s\r\n", (i + 1), err.Error())
+			io.WriteString(w, msg)
+
+			tr.Message = msg
+			testResults = append(testResults, tr)
+
+			continue
+		} else {
+			io.WriteString(w, fmt.Sprintf("%d. Got response body: %s\r\n", (i+1), string(body)))
+		}
+
 		//Assert status code
 		if res.StatusCode != tc.Expect.StatusCode && tc.Pipeline.OnFailure == onfailure.Exit {
 			msg := fmt.Sprintf(
@@ -246,29 +269,6 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 			testResults = append(testResults, tr)
 
 			continue
-		}
-
-		//Assert response body
-		body, err := ioutil.ReadAll(res.Body)
-		res.Body.Close()
-		if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-			msg := fmt.Sprintf("%d. Failed to get response body: %s\r\n", (i + 1), err.Error())
-			io.WriteString(w, msg)
-
-			tr.Message = msg
-			testResults = append(testResults, tr)
-
-			return testResults
-		} else if err != nil {
-			msg := fmt.Sprintf("%d. Failed to get response body: %s\r\n", (i + 1), err.Error())
-			io.WriteString(w, msg)
-
-			tr.Message = msg
-			testResults = append(testResults, tr)
-
-			continue
-		} else {
-			io.WriteString(w, fmt.Sprintf("%d. Got response body: %s\r\n", (i+1), string(body)))
 		}
 
 		//evaluate every rule
