@@ -1,6 +1,6 @@
 package onfailure
 
-import "github.com/bastianrob/go-restify/enum"
+import "github.com/Spacestock/go-restify/enum"
 
 //Enumeration constants
 const (

@@ -10,10 +10,10 @@ import (
 
 //Request test object
 type Request struct {
-	URL     string                 `json:"url" bson:"url"`
-	Method  string                 `json:"method" bson:"method"`
-	Headers map[string]string      `json:"headers" bson:"headers"`
-	Payload map[string]interface{} `json:"payload" bson:"payload"`
+	URL     string                 `json:"url"`
+	Method  string                 `json:"method"`
+	Headers map[string]string      `json:"headers"`
+	Payload map[string]interface{} `json:"payload"`
 }
 
 func recursiveMapParser(obj map[string]interface{}, cache map[string]json.RawMessage) map[string]interface{} {

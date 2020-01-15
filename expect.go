@@ -9,9 +9,9 @@ import (
 
 //Expect response expectation
 type Expect struct {
-	StatusCode int               `json:"status_code" bson:"status_code"`
-	Headers    map[string]string `json:"headers" bson:"headers"`
-	Evaluate   []Expression      `json:"evaluate" bson:"evaluate"`
+	StatusCode int               `json:"status_code"`
+	Headers    map[string]string `json:"headers"`
+	Evaluate   []Expression      `json:"evaluate"`
 }
 
 //Parse cache into evaluation value

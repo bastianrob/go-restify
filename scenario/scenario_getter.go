@@ -1,6 +1,6 @@
 package scenario
 
-import restify "github.com/bastianrob/go-restify"
+import restify "github.com/Spacestock/go-restify"
 
 type getter struct {
 	scenario *scenario
