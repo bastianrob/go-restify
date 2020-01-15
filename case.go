@@ -3,7 +3,7 @@ package restify
 import (
 	"regexp"
 
-	"github.com/Spacestock/go-restify/enum"
+	"github.com/SpaceStock/go-restify/enum"
 )
 
 var (

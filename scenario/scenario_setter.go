@@ -3,7 +3,7 @@ package scenario
 import (
 	"sort"
 
-	restify "github.com/Spacestock/go-restify"
+	restify "github.com/SpaceStock/go-restify"
 )
 
 type setter struct {

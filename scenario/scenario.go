@@ -11,8 +11,8 @@ import (
 	"net/http/httptrace"
 	"time"
 
-	restify "github.com/Spacestock/go-restify"
-	"github.com/Spacestock/go-restify/enum/onfailure"
+	restify "github.com/SpaceStock/go-restify"
+	"github.com/SpaceStock/go-restify/enum/onfailure"
 )
 
 //implementation of restify.Scenario
