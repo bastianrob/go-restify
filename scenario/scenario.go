@@ -97,6 +97,8 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 
 	testResults := []restify.TestResult{}
 	httpClient := http.Client{}
+
+	loop:
 	for i, tc := range s.cases {
 		io.WriteString(w, fmt.Sprintf(
 			"%d. Test case: name=%s desc=%s onfail=%s\r\n",
@@ -228,7 +230,38 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 			continue
 		}
 
-		//TODO: Evaluate every rule
+		// TODO: Evaluate every rule
+		pair := map[string]interface{}
+		json.Unmarshal(body, &pair)						//	convert []byte to map[string]interface{}	
+
+		for _, expr := range tc.Expect.Evaluate {		//	foreach rule in evaluate
+			isValid := expr.IsTrue(pair)
+			if !isValid && expr.Pipeline.OnFailure == onfailure.Exit {
+				msg := fmt.Sprintf("%d. Expression Failed : Status %t\r\n", (i + 1), isValid)
+				io.WriteString(w, msg)
+
+				tr.Message = msg
+				testResults = append(testResults, tr)
+
+				return testResults
+			} else if !isValid {
+				msg := fmt.Sprintf("%d. Expression Failed : Status %t\r\n", (i + 1), isValid)
+				io.WriteString(w, msg)
+
+				tr.Message = msg
+				testResults = append(testResults, tr)
+
+				continue loop
+			} else {
+				msg := fmt.Sprintf("%d. Expression Success: Status %t\r\n", (i + 1), isValid)
+				io.WriteString(w, msg)
+
+				tr.Message = msg
+				testResults = append(testResults, tr)
+
+				continue loop
+			}
+		}
 
 		//cache if needed
 		if tc.Pipeline.Cache {
