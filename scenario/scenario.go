@@ -108,7 +108,7 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 
 		//Parse any cache needed
 		tc.Request.Parse(s.cache)
-		tc.Expect.Parse(s.cache)
+		// tc.Expect.Parse(s.cache)
 		payload, _ := json.Marshal(tc.Request.Payload)
 
 		//Setup HTTP request
@@ -231,12 +231,12 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 		}
 
 		// TODO: Evaluate every rule
-		pair := map[string]interface{}
+		var pair map[string]interface{}
 		json.Unmarshal(body, &pair)						//	convert []byte to map[string]interface{}	
 
 		for _, expr := range tc.Expect.Evaluate {		//	foreach rule in evaluate
 			isValid := expr.IsTrue(pair)
-			if !isValid && expr.Pipeline.OnFailure == onfailure.Exit {
+			if !isValid && tc.Pipeline.OnFailure == onfailure.Exit {
 				msg := fmt.Sprintf("%d. Expression Failed : Status %t\r\n", (i + 1), isValid)
 				io.WriteString(w, msg)
 
@@ -259,7 +259,7 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 				tr.Message = msg
 				testResults = append(testResults, tr)
 
-				continue loop
+				continue
 			}
 		}
 
