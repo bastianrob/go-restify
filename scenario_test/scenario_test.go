@@ -136,6 +136,7 @@ func Test_Scenario2(t *testing.T) {
 				StatusCode: 200,
 				Evaluate: []restify.Expression{
 					"userId && userId === 1",
+					"id && id === 1",
 				},
 			},
 			Pipeline: restify.Pipeline{
@@ -157,12 +158,34 @@ func Test_Scenario2(t *testing.T) {
 				StatusCode: 200,
 				Evaluate: []restify.Expression{
 					"userId && userId === 1",
-					"id && id === 2",
+					"id && id === 2",	//	False
 				},
 			},
 			Pipeline: restify.Pipeline{
 				Cache:     true,
 				CacheAs:   "tc2",
+				OnFailure: onfailure.Exit,
+			},
+		}).
+		AddCase(restify.TestCase{
+			Order:       3,
+			Name:        "Test Case 3",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/3",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 3",
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc1",
 				OnFailure: onfailure.Exit,
 			},
 		}).End().
@@ -173,8 +196,86 @@ func Test_Scenario2(t *testing.T) {
 	assert.True(t, results[1].Success)
 }
 
-// Data False
+//	Pipeline.OnFailure=Exit
 func Test_Scenario3(t *testing.T) {
+	scn := scenario.New()
+	results := scn.
+		Set().ID("").Name("Scenario 2").
+		AddCase(restify.TestCase{
+			Order:       1,
+			Name:        "Test Case 1",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/1",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 1",
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc1",
+				OnFailure: onfailure.Exit,
+			},
+		}).
+		AddCase(restify.TestCase{
+			Order:       2,
+			Name:        "Test Case 2",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/2",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 3",	//	False
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc2",
+				OnFailure: onfailure.Exit,
+			},
+		}).
+		AddCase(restify.TestCase{
+			Order:       3,
+			Name:        "Test Case 3",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/3",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 3",
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc3",
+				OnFailure: onfailure.Exit,
+			},
+		}).End().
+		Run(os.Stdout)
+
+	assert.Equal(t, 2, len(results), "Test Case = 2")
+	assert.True(t, results[0].Success)
+	assert.False(t, results[1].Success)
+}
+
+// Pipeline.OnFailure=Fallthrough
+func Test_Scenario4(t *testing.T) {
 	scn := scenario.New()
 	results := scn.
 		Set().ID("").Name("Scenario 3").
@@ -213,13 +314,13 @@ func Test_Scenario3(t *testing.T) {
 				StatusCode: 200,
 				Evaluate: []restify.Expression{
 					"userId && userId === 1",
-					"id && id === 2",
+					"id && id === 1",	//	False
 				},
 			},
 			Pipeline: restify.Pipeline{
 				Cache:     true,
 				CacheAs:   "tc2",
-				OnFailure: onfailure.Exit,
+				OnFailure: onfailure.Fallthrough,
 			},
 		}).
 		AddCase(restify.TestCase{
@@ -235,7 +336,7 @@ func Test_Scenario3(t *testing.T) {
 				StatusCode: 200,
 				Evaluate: []restify.Expression{
 					"userId && userId === 1",
-					"id && id === 1",			//	False
+					"id && id === 3",
 				},
 			},
 			Pipeline: restify.Pipeline{
@@ -246,9 +347,9 @@ func Test_Scenario3(t *testing.T) {
 		}).End().
 		Run(os.Stdout)
 
-	assert.NotEqual(t, 0, len(results), "Seharusnya bukan 0")
+	assert.Equal(t, 3, len(results), "Test Case = 3")
 	
 	assert.True(t, results[0].Success)
-	assert.True(t, results[1].Success)
-	assert.False(t, results[2].Success)
+	assert.False(t, results[1].Success)
+	assert.True(t, results[2].Success)
 }
