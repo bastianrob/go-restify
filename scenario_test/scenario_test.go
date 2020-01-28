@@ -7,6 +7,7 @@ import (
 	restify "github.com/SpaceStock/go-restify"
 	"github.com/SpaceStock/go-restify/enum/onfailure"
 	"github.com/SpaceStock/go-restify/scenario"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Scenario(t *testing.T) {
@@ -117,6 +118,7 @@ func Test_Scenario(t *testing.T) {
 	}
 }
 
+//	Data True
 func Test_Scenario2(t *testing.T) {
 	scn := scenario.New()
 	results := scn.
@@ -133,8 +135,7 @@ func Test_Scenario2(t *testing.T) {
 			Expect: restify.Expect{
 				StatusCode: 200,
 				Evaluate: []restify.Expression{
-					"userId && userId === 5",
-					"id && id === 6",
+					"userId && userId === 1",
 				},
 			},
 			Pipeline: restify.Pipeline{
@@ -142,14 +143,112 @@ func Test_Scenario2(t *testing.T) {
 				CacheAs:   "tc1",
 				OnFailure: onfailure.Exit,
 			},
+		}).
+		AddCase(restify.TestCase{
+			Order:       2,
+			Name:        "Test Case 2",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/2",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 2",
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc2",
+				OnFailure: onfailure.Exit,
+			},
 		}).End().
 		Run(os.Stdout)
 
-	if len(results) <= 0 {
-		t.Error("No result returned")
-	}
+	assert.NotEqual(t, 0, len(results), "Seharusnya bukan 0")
+	assert.True(t, results[0].Success)
+	assert.True(t, results[1].Success)
+}
 
-	if results[0].Success {
-		t.Error("This case should have failed")
-	}
+// Data False
+func Test_Scenario3(t *testing.T) {
+	scn := scenario.New()
+	results := scn.
+		Set().ID("").Name("Scenario 3").
+		AddCase(restify.TestCase{
+			Order:       1,
+			Name:        "Test Case 1",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/1",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 1",
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc1",
+				OnFailure: onfailure.Exit,
+			},
+		}).
+		AddCase(restify.TestCase{
+			Order:       2,
+			Name:        "Test Case 2",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/2",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 2",
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc2",
+				OnFailure: onfailure.Exit,
+			},
+		}).
+		AddCase(restify.TestCase{
+			Order:       3,
+			Name:        "Test Case 3",
+			Description: "",
+			Request: restify.Request{
+				URL:     "http://jsonplaceholder.typicode.com/posts/3",
+				Method:  "GET",
+				Payload: nil,
+			},
+			Expect: restify.Expect{
+				StatusCode: 200,
+				Evaluate: []restify.Expression{
+					"userId && userId === 1",
+					"id && id === 1",			//	False
+				},
+			},
+			Pipeline: restify.Pipeline{
+				Cache:     true,
+				CacheAs:   "tc3",
+				OnFailure: onfailure.Exit,
+			},
+		}).End().
+		Run(os.Stdout)
+
+	assert.NotEqual(t, 0, len(results), "Seharusnya bukan 0")
+	
+	assert.True(t, results[0].Success)
+	assert.True(t, results[1].Success)
+	assert.False(t, results[2].Success)
 }
