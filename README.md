@@ -9,7 +9,7 @@ Only works for JSON API
 ## Dependencies
 
 ```bash
-"github.com/bastianrob/go-valuator"
+"github.com/robertkrimen/otto"
 "github.com/buger/jsonparser"
 ```
 

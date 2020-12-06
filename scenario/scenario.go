@@ -9,15 +9,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptrace"
-	"strings"
 	"time"
 
-	"github.com/buger/jsonparser"
-	"go.mongodb.org/mongo-driver/bson"
-
-	restify "github.com/bastianrob/go-restify"
-	"github.com/bastianrob/go-restify/enum/onfailure"
-	valuator "github.com/bastianrob/go-valuator"
+	restify "github.com/SpaceStock/go-restify"
+	"github.com/SpaceStock/go-restify/enum/onfailure"
 )
 
 //implementation of restify.Scenario
@@ -94,44 +89,6 @@ func (s *scenario) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (s *scenario) MarshalBSON() ([]byte, error) {
-	return bson.Marshal(struct {
-		ID          string             `bson:"_id"`
-		Name        string             `bson:"name"`
-		Description string             `bson:"description"`
-		Environment string             `bson:"environment"`
-		Cases       []restify.TestCase `bson:"cases"`
-	}{
-		ID:          s.id,
-		Name:        s.name,
-		Description: s.description,
-		Environment: s.environment,
-		Cases:       s.cases,
-	})
-}
-
-func (s *scenario) UnmarshalBSON(data []byte) error {
-	alias := struct {
-		ID          string             `bson:"_id"`
-		Name        string             `bson:"name"`
-		Description string             `bson:"description"`
-		Environment string             `bson:"environment"`
-		Cases       []restify.TestCase `bson:"cases"`
-	}{}
-
-	err := bson.Unmarshal(data, &alias)
-	if err != nil {
-		return err
-	}
-
-	s.id = alias.ID
-	s.name = alias.Name
-	s.description = alias.Description
-	s.environment = alias.Environment
-	s.cases = alias.Cases
-	return nil
-}
-
 //TODO: UGLY AF CODE! TOO EFFIN FAT! NEED TO REFACTOR!
 func (s *scenario) Run(w io.Writer) []restify.TestResult {
 	io.WriteString(w, fmt.Sprintf(
@@ -140,6 +97,8 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 
 	testResults := []restify.TestResult{}
 	httpClient := http.Client{}
+
+loop:
 	for i, tc := range s.cases {
 		io.WriteString(w, fmt.Sprintf(
 			"%d. Test case: name=%s desc=%s onfail=%s\r\n",
@@ -149,7 +108,7 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 
 		//Parse any cache needed
 		tc.Request.Parse(s.cache)
-		tc.Expect.Parse(s.cache)
+		// tc.Expect.Parse(s.cache)
 		payload, _ := json.Marshal(tc.Request.Payload)
 
 		//Setup HTTP request
@@ -271,66 +230,34 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 			continue
 		}
 
-		//evaluate every rule
-		valid := true
-		invalidMsg := ""
-		for ri, rule := range tc.Expect.Evaluate {
-			eval, err := valuator.NewValuator(rule.Prop, rule.Operator, rule.Value, rule.Description)
-			if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-				msg := fmt.Sprintf("%d.%d. Failed to get evaluator: %s\r\n", (i + 1), (ri + 1), err.Error())
+		// TODO: Evaluate every rule
+		var pair map[string]interface{}
+		json.Unmarshal(body, &pair) //	convert []byte to map[string]interface{}
+
+		for _, expr := range tc.Expect.Evaluate { //	foreach rule in evaluate
+			isValid := expr.IsTrue(pair)
+			if !isValid && tc.Pipeline.OnFailure == onfailure.Exit {
+				msg := fmt.Sprintf("%d. Expression Failed : Status %t\r\n", (i + 1), isValid)
 				io.WriteString(w, msg)
 
 				tr.Message = msg
 				testResults = append(testResults, tr)
+
 				return testResults
-			} else if err != nil {
-				msg := fmt.Sprintf("%d.%d. Failed to get evaluator: %s\r\n", (i + 1), (ri + 1), err.Error())
+			} else if !isValid {
+				msg := fmt.Sprintf("%d. Expression Failed : Status %t\r\n", (i + 1), isValid)
 				io.WriteString(w, msg)
 
 				tr.Message = msg
 				testResults = append(testResults, tr)
+
+				continue loop
+			} else {
+				msg := fmt.Sprintf("%d. Expression Success: Status %t\r\n", (i + 1), isValid)
+				io.WriteString(w, msg)
+
 				continue
 			}
-
-			obj := make(map[string]interface{})
-			{ //parse response body into map and take the evaluation object
-				if rule.Object == "" {
-					err = json.Unmarshal(body, &obj)
-				} else {
-					paths := strings.Split(rule.Object, ".")
-					val, _, _, _ := jsonparser.Get(body, paths...)
-					err = json.Unmarshal(val, &obj)
-				}
-
-				if err != nil && tc.Pipeline.OnFailure == onfailure.Exit {
-					msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
-					io.WriteString(w, msg)
-
-					tr.Message = msg
-					testResults = append(testResults, tr)
-					return testResults
-				} else if err != nil {
-					msg := fmt.Sprintf("%d. Failed to parse response body into map: %s\r\n", (i + 1), err.Error())
-					io.WriteString(w, msg)
-
-					tr.Message = msg
-					testResults = append(testResults, tr)
-					continue
-				}
-			}
-
-			valid = eval.Evaluate(obj)
-			if !valid {
-				invalidMsg = fmt.Sprintf("%d.%d. Expectation failed against rule=%+v\r\n", (i + 1), (ri + 1), rule)
-				io.WriteString(w, invalidMsg)
-				break
-			}
-		}
-
-		if !valid && tc.Pipeline.OnFailure == onfailure.Exit {
-			tr.Message = invalidMsg
-			testResults = append(testResults, tr)
-			return testResults
 		}
 
 		//cache if needed
@@ -341,6 +268,7 @@ func (s *scenario) Run(w io.Writer) []restify.TestResult {
 		msg := fmt.Sprintf("%d. Success\r\n", (i + 1))
 		io.WriteString(w, msg)
 
+		tr.Success = true
 		tr.Message = msg
 		testResults = append(testResults, tr)
 	}

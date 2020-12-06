@@ -6,24 +6,25 @@ import "time"
 //Hopefully de-normalizing the structure can make analytic easier
 //Generally immutable, so we don't need ID and just let DB auto gen for us
 type TestResult struct {
-	Timestamp     int64  `json:"timestamp" bson:"timestamp"`
-	ScenarioName  string `json:"scenario_name" bson:"scenario_name"`
-	TestCaseOrder int    `json:"test_case_order" bson:"test_case_order"`
-	TestCaseName  string `json:"test_case_name" bson:"test_case_name"`
-	RequestMethod string `json:"request_method" bson:"request_method"`
-	RequestURL    string `json:"request_url" bson:"request_url"`
+	Timestamp     int64  `json:"timestamp"`
+	ScenarioName  string `json:"scenario_name"`
+	TestCaseOrder int    `json:"test_case_order"`
+	TestCaseName  string `json:"test_case_name"`
+	RequestMethod string `json:"request_method"`
+	RequestURL    string `json:"request_url"`
 	//RequestPayload?
-	ResponseCode int   `json:"response_code" bson:"response_code"`
-	ResponseSize int64 `json:"response_size" bson:"response_size"`
+	ResponseCode int   `json:"response_code"`
+	ResponseSize int64 `json:"response_size"`
 	//Response timing
-	TimingDNS       time.Duration `json:"timing_dns" bson:"timing_dns"`
-	TimingHandshake time.Duration `json:"timing_handshake" bson:"timing_handshake"`
-	TimingConnected time.Duration `json:"timing_connected" bson:"timing_connected"`
-	TimingFirstByte time.Duration `json:"timing_first_byte" bson:"timing_first_byte"`
-	TimingTotal     time.Duration `json:"timing_total" bson:"timing_total"`
+	TimingDNS       time.Duration `json:"timing_dns"`
+	TimingHandshake time.Duration `json:"timing_handshake"`
+	TimingConnected time.Duration `json:"timing_connected"`
+	TimingFirstByte time.Duration `json:"timing_first_byte"`
+	TimingTotal     time.Duration `json:"timing_total"`
 	//ResponsePayload?
-	ExpectedCode int    `json:"expected_code" bson:"expected_code"`
-	Message      string `json:"message" bson:"message"`
+	Success      bool   `json:"success"`
+	ExpectedCode int    `json:"expected_code"`
+	Message      string `json:"message"`
 }
 
 //NewTestResult from scenario

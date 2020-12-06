@@ -1,10 +1,31 @@
 package restify
 
+import (
+	"github.com/robertkrimen/otto"
+)
+
 //Expression rule of expected response
-type Expression struct {
-	Object      string `json:"object" bson:"object"`
-	Prop        string `json:"prop" bson:"prop"`
-	Operator    string `json:"operator" bson:"operator"`
-	Value       string `json:"value" bson:"value"`
-	Description string `json:"description" bson:"description"`
+type Expression string
+
+// IsTrue evaluate given boolean expression whether it is true, or false
+// Return false on invalid expression
+func (expr Expression) IsTrue(input map[string]interface{}) bool {
+	jsvm := otto.New()
+	for key, val := range input {
+		jsvm.Set(key, val)
+	}
+
+	// jsvm.Set("res", input)
+	// jsvm.Run("res = JSON.parse(res)")
+	val, err := jsvm.Run(string(expr))
+	if err != nil {
+		return false
+	}
+
+	result, err := val.ToBoolean()
+	if err != nil {
+		return false
+	}
+
+	return result
 }
